@@ -3,7 +3,7 @@ services:
   api:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-prod
     ports:
       - "8000:8000"
     volumes:

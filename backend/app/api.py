@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 import os
 from PIL import Image
 import secrets
+from app.celery import process_image_task
 from app.database import SessionLocal
 from app.models import Image as ImageModel
 from pydantic import NonNegativeFloat
@@ -18,7 +19,7 @@ async def test():
 
 @router.get("/images/{image_id}/", tags=["images"])
 async def get_image(image_id: str):
-    image_path = os.path.join("images", image_id)
+    image_path = os.path.join("storage", "processed", f"{image_id}.png")
     if not os.path.exists(image_path):
         return {"error": "Image not found"}
     
@@ -74,6 +75,7 @@ async def upload_image(
     print(f"Image ID: {image_id}, Filters: {filters}, Width: {width}, Height: {height} - Job sent to celery worker")
     # process_image_task(image_id, filters, width, height)
 
+    process_image_task.apply_async(args=[image_id, filters, width, height], countdown=5)
 
 
     db = SessionLocal()
