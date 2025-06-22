@@ -15,3 +15,11 @@ class Image(Base):
     expires_at = Column(DateTime, default=lambda: datetime.now(timezone.utc) + timedelta(days=7))
 
     __table_args__ = (Index("ix_image_expires_at", "expires_at"),)
+
+
+class User(Base):
+    __tablename__ = 'users'
+    email = Column(String, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
+    registered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

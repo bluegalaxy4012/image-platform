@@ -1,4 +1,5 @@
 version: '3.9'
+
 services:
   api:
     build:
@@ -11,6 +12,35 @@ services:
       - ./backend/storage:/app/storage
     depends_on:
       - redis
+    env_file:
+      - .env
 
   redis:
     image: redis:7-alpine
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.celery.celery_app worker --loglevel=info
+    volumes:
+      - ./backend:/app
+      - ./backend/storage:/app/storage
+    depends_on:
+      - redis
+    env_file:
+      - .env
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.celery.celery_cleanup beat --loglevel=info
+    volumes:
+      - ./backend:/app
+      - ./backend/storage:/app/storage
+    depends_on:
+      - redis
+    env_file:
+      - .env
+

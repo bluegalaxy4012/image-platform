@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import os
-from PIL.Image import Image
+from PIL import Image
 from celery import Celery
 from celery.schedules import crontab
 import dotenv
@@ -17,15 +17,18 @@ celery_app = Celery(
 )
 
 @celery_app.task
-def process_image_task(self, image_id: str, filters: list, width: int = 0, height: int = 0):
+def process_image_task(image_id: str, filters: list, width: int = 0, height: int = 0):
     try:
         db = SessionLocal()
         image_model = db.query(ImageModel).filter_by(id=image_id).first()
         if not image_model:
             raise ValueError(f"Image with ID {image_id} not found in db.")
 
-        image = Image.open(f"storage/originals/{image_id}.png")
-        if width > 0 and height > 0:
+        ext = image_model.format.lower().strip()
+        save_format = "PNG" if ext == "png" else "JPEG"
+
+        image = Image.open(f"storage/originals/{image_id}.{ext}")
+        if width and height:
             image = image.resize((width, height))
 
         for filter_name in filters:
@@ -46,21 +49,22 @@ def process_image_task(self, image_id: str, filters: list, width: int = 0, heigh
 
 
         os.makedirs("storage/processed", exist_ok=True)
-        path = f"storage/processed/{image_id}.png"
+        path = f"storage/processed/{image_id}.{ext}"
 
-        image.save(path, format="PNG")
+        image.save(path, format=save_format)
         image_model.status = "COMPLETED"
         if width > 0 and height > 0:
             image_model.width = width
             image_model.height = height
-        image_model.
         db.commit()
         db.close()
 
         return {"image_id": image_id, "status": "COMPLETED", "message": "Image processed successfully."}
 
     except Exception as e:
-        self.retry(exc=e)
+        db.rollback()
+        db.close()
+        return {"image_id": image_id, "status": "FAILED", "message": str(e)}
 
 
 celery_cleanup = Celery(
