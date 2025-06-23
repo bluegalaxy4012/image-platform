@@ -1,6 +1,13 @@
 from sqlalchemy import Column, Index, Integer, String, DateTime, JSON
 from datetime import datetime, timezone, timedelta
 from app.database import Base
+from pydantic import BaseModel
+
+mime_types = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+}
 
 class Image(Base):
     __tablename__ = 'images'
@@ -23,3 +30,16 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     password = Column(String)
     registered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class UploadResponse(BaseModel):
+    image_id: str
+    message: str
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class MessageResponse(BaseModel):
+    message: str
