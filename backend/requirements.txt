@@ -8,3 +8,7 @@ psycopg2-binary
 sqlalchemy
 python-multipart
 python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt
+pytest

@@ -2,11 +2,12 @@ from datetime import datetime, timedelta, timezone
 import os
 import dotenv
 from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from jose import jwt, JWTError
-from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.database import SessionLocal, get_db
 from app.models import User
 
 dotenv.load_dotenv()
@@ -15,7 +16,7 @@ pass_context = CryptContext(schemes= ["bcrypt"], deprecated= "auto")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 def hash_password(password: str) -> str:
     return pass_context.hash(password)
@@ -38,21 +39,15 @@ def decode_token(token: str):
 
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+bearer = HTTPBearer()
 
 
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def get_current_user(token: str = Depends(oauth2_scheme), db: SessionLocal = Depends(get_db)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer), db: Session = Depends(get_db)):
+    token = credentials.credentials
     try:
         decoded = decode_token(token)
+        if not decoded:
+            raise JWTError("Invalid token")
         email = decoded.get("sub")
         if not email:
             raise JWTError("Email not found in token")
