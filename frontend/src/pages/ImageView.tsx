@@ -20,7 +20,7 @@ export default function ImageView() {
                 setImageUrl(url);
                 setError(null);
             })
-            .catch(e => {
+            .catch(_ => {
                 // console.error('Error fetching image:', e);
                 setError('Failed to load image.');
                 setImageUrl(null);
