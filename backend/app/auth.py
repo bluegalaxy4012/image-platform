@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import os
 import dotenv
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -38,12 +38,13 @@ def decode_token(token: str):
         return None
 
 
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    # token = credentials.credentials
+    token = request.cookies.get("access_token")
 
-bearer = HTTPBearer()
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer), db: Session = Depends(get_db)):
-    token = credentials.credentials
     try:
         decoded = decode_token(token)
         if not decoded:

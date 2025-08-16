@@ -9,8 +9,6 @@ export default function ImageView() {
 
 
     const navigate = useNavigate();
-    // const backendUrl = import.meta.env.VITE_BACKEND_URL;
-    // console.log(`Backend URL: ${backendUrl}, Image ID: ${imageId}`);
 
     useEffect(() => {
         if (imageId)

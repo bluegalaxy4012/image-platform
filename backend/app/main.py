@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from app.api import router
 from app.database import init_db
 from contextlib import asynccontextmanager
@@ -12,9 +13,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
+@app.middleware("http")
+async def enforce_https(request: Request, call_next):
+    if request.headers.get("x-forwarded-proto", "http") == "https":
+        request.scope["scheme"] = "https"
+    response = await call_next(request)
+    return response
+
+
 origins = [
-    "http://localhost:5173",
-    "https://13.51.201.9:5173",
+       "https://rapidpic.marian.homes",
 ]
 
 app.add_middleware(
