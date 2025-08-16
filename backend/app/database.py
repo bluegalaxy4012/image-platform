@@ -20,6 +20,6 @@ def get_db():
     try:
         yield db
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected database error")
+        raise HTTPException(status_code=500, detail=f"Unexpected database error: {e}")
     finally:
         db.close()

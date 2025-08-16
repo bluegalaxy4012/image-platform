@@ -1,10 +1,19 @@
+import { useEffect, useState } from "react";
+import apiClient, { checkAuth } from "../api/ApiClient";
+
 export default function Home() {
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+    checkAuth()
+        .then(() => setIsLoggedIn(true))
+        .catch(() => setIsLoggedIn(false));
+    }, []);
 
     return (
         <div>
-        <h1 className="text-4xl font-bold mb-8">Image Platform</h1>
+        <h1>Image Platform</h1>
         <form
-            className="flex flex-col items-center"
             onSubmit={(e) => {
             e.preventDefault();
             const imageId = (e.target as HTMLFormElement).elements.namedItem('imageId') as HTMLInputElement;
@@ -13,16 +22,31 @@ export default function Home() {
             }
             }}
         >
-            <input
+
+        <input
             type="text"
             name="imageId"
             placeholder="Enter Image ID"
-            className="p-2 border border-gray-300 rounded mb-4"
             />
-            <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+            <button type="submit" className="rounded">
             View Image
             </button>
         </form>
+
+        { isLoggedIn && <button onClick={() => { 
+            apiClient.post('/logout', {}, { withCredentials: true }).then(() => {
+                window.location.reload();
+            });
+         }}> Logout </button> 
+         }
+
+        { isLoggedIn && <button className="rounded" onClick={() => {
+            window.location.href = '/upload';
+        }}>Upload image</button> }
+
+        { !isLoggedIn &&  <button className="rounded" onClick={() => {
+            window.location.href = '/register';
+        }}>Register/Login to see upload images</button> }
         </div>
     );
 }

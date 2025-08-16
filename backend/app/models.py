@@ -1,7 +1,8 @@
+from typing import Optional
 from sqlalchemy import Column, Index, Integer, String, DateTime, JSON
 from datetime import datetime, timezone, timedelta
 from app.database import Base
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 mime_types = {
     "jpg": "image/jpeg",
@@ -32,14 +33,30 @@ class User(Base):
     registered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class ImageUploadRequest(BaseModel):
+    format: str
+    apply_resize: bool = False
+    width: Optional[int] = None
+    height: Optional[int] = None
+    apply_grayscale: bool = False
+    apply_color_inversion: bool = False
+    apply_sepia: bool = False
+
+
 class UploadResponse(BaseModel):
     image_id: str
     message: str
 
-class AuthResponse(BaseModel):
-    access_token: str
-    token_type: str
-
-
 class MessageResponse(BaseModel):
     message: str
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
