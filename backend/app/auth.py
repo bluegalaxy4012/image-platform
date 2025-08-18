@@ -2,12 +2,11 @@ from datetime import datetime, timedelta, timezone
 import os
 import dotenv
 from fastapi import Depends, HTTPException, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal, get_db
+from app.database import get_db
 from app.models import User
 
 dotenv.load_dotenv()

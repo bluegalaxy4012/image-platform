@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from app.api import router
 from app.database import init_db
 from contextlib import asynccontextmanager
@@ -14,6 +13,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+# only https
 @app.middleware("http")
 async def enforce_https(request: Request, call_next):
     if request.headers.get("x-forwarded-proto", "http") == "https":

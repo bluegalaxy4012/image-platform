@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 import os
-from PIL import Image
+from PIL import Image, ImageFilter
 from celery import Celery
 from celery.schedules import crontab
 import dotenv
+import numpy as np
 
 from app.database import SessionLocal
-from app.models import Image as ImageModel
+from app.models import Image as ImageModel, User
 
 dotenv.load_dotenv()
 
@@ -31,29 +32,39 @@ def process_image_task(image_id: str, filters: list, width: int = 0, height: int
         if width and height:
             image = image.resize((width, height))
 
+        alpha = None
+        if image.mode == "RGBA" and save_format == "PNG":
+            alpha = image.split()[-1]
+            image = image.convert("RGB")
+
         for filter_name in filters:
             if filter_name == "grayscale":
                 image = image.convert("L")
             elif filter_name == "color_inversion":
-                image = Image.eval(image, lambda px: 255 - px)
+                image_array = np.array(image)
+                image_array = 255 - image_array
+                image = Image.fromarray(image_array)
             elif filter_name == "sepia":
-                sepia_filter = Image.new("RGB", image.size)
-                for x in range(image.width):
-                    for y in range(image.height):
-                        r, g, b = image.getpixel((x, y))
-                        tr = int(0.393 * r + 0.769 * g + 0.189 * b)
-                        tg = int(0.349 * r + 0.686 * g + 0.168 * b)
-                        tb = int(0.272 * r + 0.534 * g + 0.131 * b)
-                        sepia_filter.putpixel((x, y), (min(tr, 255), min(tg, 255), min(tb, 255)))
-                image = sepia_filter
+                image_array = np.array(image).astype(float)
+                sepia_matrix = np.array([[0.393, 0.769, 0.189],
+                                         [0.349, 0.686, 0.168],
+                                         [0.272, 0.534, 0.131]])
+                
+                image_array = np.clip(image_array @ sepia_matrix.T, 0, 255).astype(np.uint8)
+                image = Image.fromarray(image_array)
+            elif filter_name == "blur":
+                image = image.filter(ImageFilter.GaussianBlur(radius=8))
 
+        if alpha:
+            image = image.convert("RGBA")
+            image.putalpha(alpha)
 
         os.makedirs("storage/processed", exist_ok=True)
         path = f"storage/processed/{image_id}.{ext}"
 
         image.save(path, format=save_format)
         image_model.status = "COMPLETED"
-        if width > 0 and height > 0:
+        if width and height and width > 0 and height > 0:
             image_model.width = width
             image_model.height = height
         db.commit()
@@ -73,16 +84,18 @@ celery_cleanup = Celery(
 )
 
 celery_cleanup.conf.beat_schedule = {
-    'cleanup_expired_images': {
-        'task': 'app.celery.cleanup_expired_images',
-        'schedule': crontab(hour=0, minute=0),
+    'cleanup_expired_data': {
+        'task': 'app.celery.cleanup_expired_data',
+        'schedule': crontab(minute="*/15"),
     },
 }
 
 @celery_cleanup.task
-def cleanup_expired_images():
+def cleanup_expired_data():
     try:
         db = SessionLocal()
+
+        # expired images
         expired_images = db.query(ImageModel).filter(ImageModel.expires_at < datetime.now(timezone.utc)).all()
 
         for img in expired_images:
@@ -94,8 +107,16 @@ def cleanup_expired_images():
             if os.path.exists(f"storage/processed/{img.id}.png"):
                 os.remove(f"storage/processed/{img.id}.png")
 
+        # expired users
+        expired_users = db.query(User).filter(User.verified == False, User.verification_expires_at < datetime.now(timezone.utc)).all()
+        for user in expired_users:
+            db.delete(user)
+
         db.commit()
-        db.close()
-        print(f"Cleaned up {len(expired_images)} expired images.")
+        print(f"Cleaned up {len(expired_images)} expired images and {len(expired_users)} expired users.")
     except Exception as e:
+        db.rollback()
         print(f"Error during cleanup: {e}")
+        raise e
+    finally:
+        db.close()

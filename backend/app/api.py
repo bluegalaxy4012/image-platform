@@ -1,53 +1,67 @@
 from io import BytesIO
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+import json
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, Body, Query
 from fastapi.responses import FileResponse, JSONResponse
 import os
 from PIL import Image
 import secrets
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime, timezone
+
 from app.auth import check_password, create_token, get_current_user, hash_password
 from app.celery import process_image_task
 from app.database import get_db
-from app.models import Image as ImageModel, ImageUploadRequest, LoginRequest, RegisterRequest, User, mime_types, MessageResponse, UploadResponse
-from sqlalchemy.orm import Session
-
+from app.models import Image as ImageModel, ImageAccessRequest, ImageUploadRequest, LoginRequest, RegisterRequest, User, mime_types, MessageResponse, UploadResponse
 from app.rate_limiter import limit
+from app.email import send_register_email
 from app.validators import validate_email, validate_password, validate_username
-
 
 router = APIRouter()
 
 @router.get("/testauth", tags=["test"])
-async def test(user: User = Depends(get_current_user)):
-    return {"message": f"Logged in"}
+async def test(_: User = Depends(get_current_user)):
+    return MessageResponse(message="Logged in")
 
 
-@router.get("/images/{image_id}", tags=["images"])
-async def get_image(image_id: str, db: Session = Depends(get_db)):
+@router.post("/images/{image_id}", tags=["images"])
+async def get_image(image_id: str, data: ImageAccessRequest = Body(...), db: Session = Depends(get_db)):
     try:
         image_model = db.query(ImageModel).filter_by(id=image_id).first()
         if not image_model:
             raise HTTPException(status_code=404, detail="Image not found")
 
+        if image_model.protected:
+            if not data.password or not check_password(data.password, image_model.hashed_password):
+                raise HTTPException(status_code=401, detail="Invalid password to protected image")
+
+
         ext = image_model.format.lower().strip()
         image_path = os.path.join("storage", "processed", f"{image_id}.{ext}")
 
         if not os.path.exists(image_path):
-            raise HTTPException(status_code=404, detail="Image not found")
+            raise HTTPException(status_code=404, detail="Image not processed yet")
     except HTTPException as http_e:
         raise http_e
+    except SQLAlchemyError as db_e:
+        print(f"Database error: {db_e}")
+        raise  HTTPException(status_code=500, detail=f"Database error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected database error")
+        print(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error")
 
     return FileResponse(path=image_path, media_type=mime_types.get(ext, "application/octet-stream"))
 
 @router.post("/upload", tags=["upload"])
 async def upload_image(
         file: UploadFile = File(...),
-        data: ImageUploadRequest = Depends(), # from body
+        options: str = Form(...),
         user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
     limit(user.email)
+
+    data = ImageUploadRequest(**json.loads(options))
 
     format = data.format
     apply_resize = data.apply_resize
@@ -56,6 +70,12 @@ async def upload_image(
     apply_grayscale = data.apply_grayscale
     apply_color_inversion = data.apply_color_inversion
     apply_sepia = data.apply_sepia
+    apply_blur = data.apply_blur
+    protected = data.protected
+    password = data.password
+
+    if protected and not password:
+        raise HTTPException(status_code=400, detail="Password must be provided for protected images")
 
     if not apply_resize:
         width = None
@@ -70,7 +90,7 @@ async def upload_image(
     if apply_resize and (width < 32 or height < 32 or width > 2560 or height > 2560):
         raise HTTPException(status_code=400, detail="Resized dimensions must be between 32x32 and 2560x2560 pixels")
 
-    if sum([apply_grayscale, apply_color_inversion, apply_sepia]) > 1:
+    if sum([apply_grayscale, apply_color_inversion, apply_sepia, apply_blur]) > 1:
         raise HTTPException(status_code=400, detail="Only one filter can be applied at a time")
 
     if format and format.lower() not in ["jpg", "jpeg", "png"]:
@@ -116,10 +136,12 @@ async def upload_image(
         filters.append("color_inversion")
     elif apply_sepia:
         filters.append("sepia")
+    elif apply_blur:
+        filters.append("blur")
 
     print(f"Image ID: {image_id}, Filters: {filters}, Width: {width}, Height: {height} - Job sent to celery worker")
 
-    process_image_task.apply_async(args=[image_id, filters, width, height], countdown=5)
+    process_image_task.apply_async(args=[image_id, filters, width or 0, height or 0], countdown=5)
 
 
     try:
@@ -129,14 +151,24 @@ async def upload_image(
             filters=filters if filters else None,
             width=width if apply_resize else None,
             height=height if apply_resize else None,
-            status="PROCESSING"
+            status="PROCESSING",
+            protected=protected,
+            hashed_password=hash_password(password) if protected else None,
         )
 
         db.add(image_model)
         db.commit()
-    except Exception as e:
+
+    except HTTPException as http_e:
+        raise http_e
+    except SQLAlchemyError as db_e:
+        print(f"Database error: {db_e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Unexpected database error")
+        raise HTTPException(status_code=500, detail="Database error")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
     return UploadResponse(image_id=image_id, message="Image uploaded and processing started")
 
@@ -158,14 +190,73 @@ async def register(
         if db.query(User).filter_by(email=email).first() or db.query(User).filter_by(username=username).first():
             raise HTTPException(status_code=400, detail="User already registered")
         
-        user = User(email=email, username=username, password=hash_password(password))
+        sent_email, verification_code = send_register_email(email, username)
+        if not sent_email or not verification_code:
+            raise HTTPException(status_code=400, detail="Failed to send verification email")
+
+        user = User(
+            email=email,
+            username=username,
+            hashed_password=hash_password(password),
+            verification_code=verification_code,
+        )
+
         db.add(user)
         db.commit()
-        return MessageResponse(message="User registered successfully")
 
-    except Exception as e:
+        return MessageResponse(message="Registration successful. Please check your email to verify your account.")
+
+    except HTTPException as http_e:
+        raise http_e
+    except SQLAlchemyError as db_e:
+        print(f"Database error: {db_e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Unexpected database error")
+        raise HTTPException(status_code=500, detail="Database error")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Unexpected error")
+
+@router.get("/verify", tags=["auth"])
+async def verify_account(email: str = Query(...), code: str = Query(...), db: Session = Depends(get_db)):
+    validate_email(email)
+    
+    try:
+        user = db.query(User).filter_by(email=email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="This email is not registered")
+
+        if user.verified:
+            raise HTTPException(status_code=400, detail="User is already verified")
+
+        if not code or len(code) != 8 or user.verification_code != code:
+            raise HTTPException(status_code=400, detail="Invalid verification code")
+
+        if user.verification_expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Verification code expired")
+
+        user.verified = True
+        user.verification_code = None
+        user.verification_expires_at = None
+
+        db.commit()
+
+        return MessageResponse(message="Account verified successfully")
+    except HTTPException as http_e:
+        raise http_e
+    except SQLAlchemyError as db_e:
+        print(f"Database error: {db_e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Unexpected error")
+
+
+
+
+
 
 @router.post("/login", tags=["auth"])
 async def login(data: LoginRequest, db: Session = Depends(get_db)):
@@ -175,7 +266,11 @@ async def login(data: LoginRequest, db: Session = Depends(get_db)):
 
     try:
         user = db.query(User).filter_by(email=email).first()
-        if not user or not check_password(password, user.password):
+
+        if not user.verified:
+            raise HTTPException(status_code=401, detail="User not verified. Please check your email for verification link.")
+
+        if not user or not check_password(password, user.hashed_password):
             raise HTTPException(status_code=401, detail="Invalid email or password")
         
         token = create_token(user.email)
@@ -192,8 +287,14 @@ async def login(data: LoginRequest, db: Session = Depends(get_db)):
 
         return response
 
+    except HTTPException as http_e:
+        raise http_e
+    except SQLAlchemyError as db_e:
+        print(f"Database error: {db_e}")
+        raise HTTPException(status_code=500, detail="Database error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected database error")
+        print(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 @router.post("/logout", tags=["auth"])

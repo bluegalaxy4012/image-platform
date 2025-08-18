@@ -29,7 +29,7 @@ def validate_password(password: str):
                 "- At least 1 uppercase letter\n"
                 "- At least 1 lowercase letter\n"
                 "- At least 1 digit\n"
-                "- At least 1 special character (#?!@$%^&*-) "
+                "- At least 1 special character (#?!@$%^&*-)"
             )
         )
 

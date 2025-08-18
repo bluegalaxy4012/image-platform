@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from fastapi import HTTPException
 import dotenv
 import os
 
@@ -19,7 +18,5 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected database error: {e}")
     finally:
         db.close()
