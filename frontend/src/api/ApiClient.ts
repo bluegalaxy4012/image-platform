@@ -1,9 +1,10 @@
 import axios from "axios";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { BACKEND_URL } from "../utils/utils";
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL,
+  baseURL: BACKEND_URL,
   headers: {
     "Content-Type": "application/json",
   },

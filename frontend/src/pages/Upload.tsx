@@ -1,23 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import apiClient, { useAuthRedirect } from "../api/ApiClient";
+import { copyToClipboard, FRONTEND_URL } from "../utils/utils";
 
 function FileUploadOptions({
   file,
+  setFile,
   setMessage,
+  setImageLink,
 }: {
   file: File | null;
+  setFile: (file: File | null) => void;
   setMessage: (message: string) => void;
+  setImageLink: (link: string) => void;
 }) {
   const maxFileSize = 1000000; // ~ 1 MB
-  const [format, setFormat] = useState("PNG");
-  const [applyResize, setApplyResize] = useState(false);
+  const [format, setFormat] = useState<string>("PNG");
+  const [applyResize, setApplyResize] = useState<boolean>(false);
   const [width, setWidth] = useState<number | "">("");
   const [height, setHeight] = useState<number | "">("");
-  const [effect, setEffect] = useState("");
-  const [protectedImage, setProtectedImage] = useState(false);
-  const [password, setPassword] = useState("");
-
-  const [imageLink, setImageLink] = useState<string | null>(null);
+  const [effect, setEffect] = useState<string>("");
+  const [protectedImage, setProtectedImage] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>("");
 
   const effects = [
     { key: "apply_grayscale", label: "Grayscale" },
@@ -59,10 +62,17 @@ function FileUploadOptions({
       })
       .then((response) => {
         if (response.status === 200) {
+          setFile(null);
+          setFormat("PNG");
+          setApplyResize(false);
+          setWidth("");
+          setHeight("");
+          setEffect("");
+          setProtectedImage(false);
+          setPassword("");
+
           setMessage(response.data.message);
-          setImageLink(
-            `https://rapidpic.marian.homes/images/${response.data.image_id}`,
-          );
+          setImageLink(`${FRONTEND_URL}/images/${response.data.image_id}`);
         } else {
           setMessage("Failed to upload image.");
         }
@@ -72,10 +82,6 @@ function FileUploadOptions({
           setMessage("Error uploading image: " + error.response.data.detail);
         }
       });
-  };
-
-  const copyLinkToClipboard = () => {
-    if (imageLink) navigator.clipboard.writeText(imageLink);
   };
 
   return (
@@ -107,6 +113,7 @@ function FileUploadOptions({
         <div>
           <label htmlFor="resize_width">Resize Width:</label>
           <input
+            required
             type="number"
             name="resize_width"
             placeholder="Width in pixels..."
@@ -119,6 +126,7 @@ function FileUploadOptions({
 
           <label htmlFor="resize_height">Resize Height:</label>
           <input
+            required
             type="number"
             name="resize_height"
             placeholder="Height in pixels..."
@@ -158,6 +166,7 @@ function FileUploadOptions({
         <div>
           <label htmlFor="password">Image Password:</label>
           <input
+            required
             type="password"
             name="password"
             placeholder="Password..."
@@ -171,18 +180,6 @@ function FileUploadOptions({
       <button type="submit" onClick={handleUpload}>
         Upload
       </button>
-
-      {imageLink && (
-        <div>
-          <a href={imageLink} target="_blank" rel="noopener noreferrer">
-            {imageLink}
-          </a>
-          <br />
-          <button className="rounded" onClick={copyLinkToClipboard}>
-            Copy link to clipboard
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -191,26 +188,66 @@ export default function Upload() {
   useAuthRedirect(true);
 
   const [file, setFile] = useState<File | null>(null);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<string>("");
+  const [imageLink, setImageLink] = useState<string>("");
+
+  // handlePasteImage
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      try {
+        const clipboard = e.clipboardData;
+        if (!clipboard) return;
+
+        const target = e.target as HTMLElement | null;
+
+        // skip if we are pasting into an editable element
+        const isEditable =
+          !!target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.isContentEditable);
+
+        if (isEditable) return;
+
+        const pastedFile = Array.from(clipboard.files || []).find((f) =>
+          f.type.startsWith("image/"),
+        );
+
+        if (pastedFile) {
+          e.preventDefault();
+          setFile(pastedFile);
+          setMessage("");
+          setImageLink("");
+        }
+      } catch (err) {
+        console.error("Pasting image error:", err);
+      }
+    };
+
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [setFile, setMessage]);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setFile(e.dataTransfer.files[0]);
+      setMessage("");
+      setImageLink("");
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      setMessage("");
+      setImageLink("");
     }
   };
 
   return (
     <div>
-      {message && <p>{message}</p>}
-
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
@@ -228,10 +265,28 @@ export default function Upload() {
 
       <p>or</p>
 
-      <input
+      {/* <input
         type="file"
         accept="image/*"
         style={{ border: "2px solid black" }}
+        onChange={handleChange}
+      /> */}
+
+      <label
+        htmlFor="fileInput"
+        style={{
+          border: "2px solid black",
+          cursor: "pointer",
+        }}
+      >
+        Choose an image from your computer
+      </label>
+
+      <input
+        id="fileInput"
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
         onChange={handleChange}
       />
 
@@ -241,7 +296,33 @@ export default function Upload() {
         </p>
       )}
 
-      <FileUploadOptions file={file} setMessage={setMessage} />
+      <FileUploadOptions
+        file={file}
+        setFile={setFile}
+        setMessage={setMessage}
+        setImageLink={setImageLink}
+      />
+
+      <br />
+      {message && <p>{message}</p>}
+      <br />
+
+      {imageLink && (
+        <div>
+          <a href={imageLink} target="_blank" rel="noopener noreferrer">
+            {imageLink}
+          </a>
+          <br />
+          <button
+            className="rounded"
+            onClick={() => {
+              copyToClipboard(new ClipboardItem({ "text/plain": imageLink }));
+            }}
+          >
+            Copy link to clipboard
+          </button>
+        </div>
+      )}
     </div>
   );
 }

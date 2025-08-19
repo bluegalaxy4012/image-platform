@@ -4,9 +4,9 @@ import apiClient, { useAuthRedirect } from "../api/ApiClient";
 export default function Login() {
   useAuthRedirect(false);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,9 +63,14 @@ export default function Login() {
         />
 
         <button type="submit">Login</button>
-
-        {message && <p>{message}</p>}
       </form>
+
+      {message && <p>{message}</p>}
+
+      <br />
+      <p>
+        Forgot your account? <a href="/forgot-password">Reset password</a>
+      </p>
     </div>
   );
 }

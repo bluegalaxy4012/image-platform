@@ -53,15 +53,6 @@ class ImageUploadRequest(BaseModel):
     protected: bool = False
     password: Optional[str] = None
 
-
-class UploadResponse(BaseModel):
-    image_id: str
-    message: str
-
-class MessageResponse(BaseModel):
-    message: str
-
-
 class RegisterRequest(BaseModel):
     email: EmailStr
     username: str
@@ -71,3 +62,20 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+class VerifyRequest(BaseModel):
+    token: str
+
+class PasswordResetEmailRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetRequest(BaseModel):
+    new_password: str
+    token: str
+
+class UploadResponse(BaseModel):
+    image_id: str
+    message: str
+
+class MessageResponse(BaseModel):
+    message: str

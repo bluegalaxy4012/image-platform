@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import apiClient from "../api/ApiClient";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function Verification() {
+  const navigate = useNavigate();
+
   const [searchParams] = useSearchParams();
   const [message, setMessage] = useState<string>("");
 
@@ -10,8 +12,7 @@ export default function Verification() {
     apiClient
       .get("/verify", {
         params: {
-          email: searchParams.get("email") || "",
-          code: searchParams.get("code") || "",
+          token: searchParams.get("token") || "",
         },
       })
       .then((response) => {
@@ -33,7 +34,7 @@ export default function Verification() {
 
       <button
         onClick={() => {
-          window.location.href = "/";
+          navigate("/");
         }}
       >
         Back to Home

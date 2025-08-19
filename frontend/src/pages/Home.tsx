@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import apiClient, { checkAuth } from "../api/ApiClient";
+import { useNavigate } from "react-router-dom";
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
+
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
   useEffect(() => {
     checkAuth()
@@ -20,7 +23,7 @@ export default function Home() {
             "imageId",
           ) as HTMLInputElement;
           if (imageId.value) {
-            window.location.href = `/images/${imageId.value}`;
+            navigate(`/images/${imageId.value}`);
           }
         }}
       >
@@ -34,7 +37,8 @@ export default function Home() {
         <button
           onClick={() => {
             apiClient.post("/logout").then(() => {
-              window.location.reload();
+              setIsLoggedIn(false);
+              navigate("/");
             });
           }}
         >
@@ -47,7 +51,7 @@ export default function Home() {
         <button
           className="rounded"
           onClick={() => {
-            window.location.href = "/upload";
+            navigate("/upload");
           }}
         >
           Upload image
@@ -58,12 +62,21 @@ export default function Home() {
         <button
           className="rounded"
           onClick={() => {
-            window.location.href = "/register";
+            navigate("/register");
           }}
         >
           Register/Login to see upload images
         </button>
       )}
+
+      <button
+        className="rounded"
+        onClick={() => {
+          navigate("/random-images");
+        }}
+      >
+        View random public images
+      </button>
     </div>
   );
 }

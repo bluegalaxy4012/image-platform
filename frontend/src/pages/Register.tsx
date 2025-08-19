@@ -4,11 +4,11 @@ import apiClient, { useAuthRedirect } from "../api/ApiClient";
 export default function Register() {
   useAuthRedirect(false);
 
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +30,8 @@ export default function Register() {
         password,
       })
       .then((response) => {
-        if (
-          response.status === 200 &&
-          response.data.message === "User registered successfully"
-        ) {
-          setMessage("Registration successful! Now you can log in.");
+        if (response.status === 200 && response.data.message) {
+          setMessage(response.data.message);
           setEmail("");
           setUsername("");
           setPassword("");
@@ -56,6 +53,7 @@ export default function Register() {
 
       <form onSubmit={handleSubmit}>
         <input
+          required
           type="email"
           name="email"
           placeholder="Enter your email..."
@@ -64,6 +62,7 @@ export default function Register() {
         />
 
         <input
+          required
           type="text"
           name="username"
           placeholder="Enter your username..."
@@ -72,6 +71,7 @@ export default function Register() {
         />
 
         <input
+          required
           type="password"
           name="password"
           placeholder="Enter your password..."
@@ -80,6 +80,7 @@ export default function Register() {
         />
 
         <input
+          required
           type="password"
           name="confirmPassword"
           placeholder="Confirm your password..."
@@ -91,9 +92,10 @@ export default function Register() {
 
         {message && <p>{message}</p>}
 
+        <br />
+
         <p>
-          {" "}
-          Already have an account? <a href="/login">Login</a>{" "}
+          Already have an account? <a href="/login">Login</a>
         </p>
       </form>
     </div>

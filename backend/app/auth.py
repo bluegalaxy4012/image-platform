@@ -23,13 +23,27 @@ def hash_password(password: str) -> str:
 def check_password(password: str, hashed_password: str) -> bool:
     return pass_context.verify(password, hashed_password)
 
-def create_token(email: str):
+def create_email_token(email: str):
     expiry = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    data = {"sub": email, "exp": expiry}
+    data = {"email": email, "exp": expiry}
 
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 
-def decode_token(token: str):
+def decode_email_token(token: str):
+    try:
+        decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return decoded
+    except jwt.JWTError:
+        return None
+    
+def create_verification_token(email: str, code: str):
+    expiry = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    data = {"email": email, "code": code, "exp": expiry}
+
+    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+
+def decode_verification_token(token: str) -> dict:
     try:
         decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return decoded
@@ -38,17 +52,16 @@ def decode_token(token: str):
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)):
-    # token = credentials.credentials
     token = request.cookies.get("access_token")
 
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        decoded = decode_token(token)
+        decoded = decode_email_token(token)
         if not decoded:
             raise JWTError("Invalid token")
-        email = decoded.get("sub")
+        email = decoded.get("email")
         if not email:
             raise JWTError("Email not found in token")
     except JWTError:

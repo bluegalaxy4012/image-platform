@@ -1,18 +1,18 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import apiClient from "../api/ApiClient";
+import { copyToClipboard } from "../utils/utils";
 
 export default function ImageView() {
-  const { imageId } = useParams<string>();
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [password, setPassword] = useState<string>("");
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const copyLinkToClipboard = () => {
-    navigator.clipboard.writeText(window.location.href);
-  };
+  const { imageId } = useParams<string>();
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState<boolean>(false);
+
+  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
 
   const fetchImage = useCallback(
     (pass?: string) => {
@@ -25,9 +25,12 @@ export default function ImageView() {
           { responseType: "blob" },
         )
         .then((response) => {
-          const url = URL.createObjectURL(response.data);
+          const blob = response.data;
+          const url = URL.createObjectURL(blob);
+
+          setImageBlob(blob);
           setImageUrl(url);
-          setError(null);
+          setError("");
           setShowPasswordPrompt(false);
         })
         .catch(async (error) => {
@@ -40,7 +43,7 @@ export default function ImageView() {
             } else {
               const errorJson = JSON.parse(await error.response.data.text());
               setError(errorJson.detail + ". Try reloading the page.");
-              setImageUrl(null);
+              setImageUrl("");
             }
           }
         });
@@ -66,7 +69,7 @@ export default function ImageView() {
           placeholder="Enter password"
         />
         <button onClick={() => fetchImage(password)}>Submit</button>
-        <button onClick={() => navigate("/")}>Back</button>
+        <button onClick={() => navigate("/")}>Back to Home</button>
       </div>
     );
 
@@ -75,7 +78,7 @@ export default function ImageView() {
       <div>
         <h2>Error</h2>
         <p>{error}</p>
-        <button onClick={() => navigate("/")}>Back</button>
+        <button onClick={() => navigate("/")}>Back to Home</button>
       </div>
     );
 
@@ -88,7 +91,25 @@ export default function ImageView() {
         <a href={imageUrl} download={`image-${imageId}`}>
           <button>Download Image</button>
         </a>
-        <button onClick={copyLinkToClipboard}>Copy Link to Clipboard</button>
+        <button
+          onClick={async () => {
+            await copyToClipboard(
+              new ClipboardItem({ "text/plain": window.location.href }),
+            );
+          }}
+        >
+          Copy Image Link to Clipboard
+        </button>
+        <button
+          onClick={async () => {
+            if (imageBlob)
+              await copyToClipboard(
+                new ClipboardItem({ [imageBlob.type]: imageBlob }),
+              );
+          }}
+        >
+          Copy Image to Clipboard
+        </button>
       </div>
       <button onClick={() => navigate("/")}>Back to Home</button>
     </div>

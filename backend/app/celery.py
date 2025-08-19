@@ -53,7 +53,7 @@ def process_image_task(image_id: str, filters: list, width: int = 0, height: int
                 image_array = np.clip(image_array @ sepia_matrix.T, 0, 255).astype(np.uint8)
                 image = Image.fromarray(image_array)
             elif filter_name == "blur":
-                image = image.filter(ImageFilter.GaussianBlur(radius=8))
+                image = image.filter(ImageFilter.GaussianBlur(radius=6))
 
         if alpha:
             image = image.convert("RGBA")
@@ -108,12 +108,12 @@ def cleanup_expired_data():
                 os.remove(f"storage/processed/{img.id}.png")
 
         # expired users
-        expired_users = db.query(User).filter(User.verified == False, User.verification_expires_at < datetime.now(timezone.utc)).all()
-        for user in expired_users:
+        expired_unverified_users = db.query(User).filter(User.verified == False, User.verification_expires_at < datetime.now(timezone.utc)).all()
+        for user in expired_unverified_users:
             db.delete(user)
 
         db.commit()
-        print(f"Cleaned up {len(expired_images)} expired images and {len(expired_users)} expired users.")
+        print(f"Cleaned up {len(expired_images)} expired images and {len(expired_unverified_users)} expired unverified users.")
     except Exception as e:
         db.rollback()
         print(f"Error during cleanup: {e}")
