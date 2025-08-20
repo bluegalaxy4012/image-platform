@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import apiClient from "../api/ApiClient";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -19,26 +21,34 @@ export default function Verification() {
         if (response.status === 200) setMessage(response.data.message);
         else setMessage("Verification failed. Try reloading the page.");
       })
+
       .catch((error) => {
-        if (error.response) {
-          setMessage(error.response.data.detail);
-        }
+        if (error.response) setMessage(error.response.data.detail);
       });
   }, [searchParams]);
 
   return (
-    <div>
-      <h1>Verification</h1>
+    <div className="container">
+      <div className="card text-center">
+        <h1 className="title">Email Verification</h1>
 
-      {message && <p>{message}</p>}
+        {message && (
+          <div
+            className={`message ${message.includes("failed") || message.includes("Invalid") ? "message-error" : "message-success"}`}
+          >
+            {message}
+          </div>
+        )}
 
-      <button
-        onClick={() => {
-          navigate("/");
-        }}
-      >
-        Back to Home
-      </button>
+        <button
+          onClick={() => {
+            navigate("/");
+          }}
+          className="btn btn-primary"
+        >
+          Back to Home
+        </button>
+      </div>
     </div>
   );
 }

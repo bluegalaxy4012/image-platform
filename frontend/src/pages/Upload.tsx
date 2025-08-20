@@ -1,3 +1,7 @@
+"use client";
+
+import type React from "react";
+
 import { useEffect, useState } from "react";
 import apiClient, { useAuthRedirect } from "../api/ApiClient";
 import { copyToClipboard, FRONTEND_URL } from "../utils/utils";
@@ -32,7 +36,11 @@ function FileUploadOptions({
   if (!file) return null;
 
   if (file.size > maxFileSize) {
-    return <div>File size exceeds the limit of 1 MB.</div>;
+    return (
+      <div className="message message-error">
+        File size exceeds the limit of 1 MB.
+      </div>
+    );
   }
 
   const handleUpload = async () => {
@@ -63,6 +71,7 @@ function FileUploadOptions({
       .then((response) => {
         if (response.status === 200) {
           setFile(null);
+
           setFormat("PNG");
           setApplyResize(false);
           setWidth("");
@@ -85,100 +94,137 @@ function FileUploadOptions({
   };
 
   return (
-    <div>
-      <label htmlFor="image-format">Image Format:</label>
-      <select
-        id="image-format"
-        value={format}
-        onChange={(e) => {
-          setFormat(e.target.value);
-        }}
-      >
-        <option value="PNG">PNG</option>
-        <option value="JPG">JPG</option>
-        <option value="JPEG">JPEG</option>
-      </select>
+    <div className="content-card">
+      <h3 className="subtitle">Upload Options</h3>
 
-      <label htmlFor="apply_resize">Apply Resize:</label>
-      <input
-        type="checkbox"
-        name="apply_resize"
-        checked={applyResize}
-        onChange={(e) => {
-          setApplyResize(e.target.checked);
-        }}
-      ></input>
+      <div className="form-group">
+        <label htmlFor="image-format" className="form-label">
+          Image Format:
+        </label>
+
+        <select
+          id="image-format"
+          value={format}
+          onChange={(e) => setFormat(e.target.value)}
+          className="select"
+        >
+          <option value="PNG">PNG</option>
+          <option value="JPG">JPG</option>
+          <option value="JPEG">JPEG</option>
+        </select>
+      </div>
+
+      <div className="form-group checkbox-group">
+        <input
+          type="checkbox"
+          id="apply_resize"
+          name="apply_resize"
+          checked={applyResize}
+          onChange={(e) => setApplyResize(e.target.checked)}
+          className="checkbox"
+        />
+
+        <label htmlFor="apply_resize" className="form-label">
+          Apply Resize
+        </label>
+      </div>
 
       {applyResize && (
-        <div>
-          <label htmlFor="resize_width">Resize Width:</label>
-          <input
-            required
-            type="number"
-            name="resize_width"
-            placeholder="Width in pixels..."
-            onChange={(e) => {
-              setWidth(Number(e.target.value));
-            }}
-          />
+        <div className="content-card">
+          <div className="form-group">
+            <label htmlFor="resize_width" className="form-label">
+              Resize Width:
+            </label>
 
-          <br></br>
+            <input
+              required
+              type="number"
+              id="resize_width"
+              name="resize_width"
+              placeholder="Width in pixels..."
+              onChange={(e) => setWidth(Number(e.target.value))}
+              className="form-input"
+            />
+          </div>
 
-          <label htmlFor="resize_height">Resize Height:</label>
-          <input
-            required
-            type="number"
-            name="resize_height"
-            placeholder="Height in pixels..."
-            onChange={(e) => {
-              setHeight(Number(e.target.value));
-            }}
-          />
+          <div className="form-group">
+            <label htmlFor="resize_height" className="form-label">
+              Resize Height:
+            </label>
+
+            <input
+              required
+              type="number"
+              id="resize_height"
+              name="resize_height"
+              placeholder="Height in pixels..."
+              onChange={(e) => setHeight(Number(e.target.value))}
+              className="form-input"
+            />
+          </div>
         </div>
       )}
 
-      {effects.map((eff) => (
-        <div key={eff.key}>
-          <label htmlFor={eff.key}>{eff.label}:</label>
-          <input
-            type="checkbox"
-            value={eff.key}
-            checked={effect === eff.key}
-            onChange={(e) => {
-              if (effect === eff.key) setEffect("");
-              else setEffect(e.target.value);
-            }}
-          />
-        </div>
-      ))}
+      <div className="form-group">
+        <label className="form-label">Effects:</label>
+        <div className="content-card">
+          {effects.map((eff) => (
+            <div key={eff.key} className="checkbox-group">
+              <input
+                type="checkbox"
+                id={eff.key}
+                value={eff.key}
+                checked={effect === eff.key}
+                onChange={(e) => {
+                  if (effect === eff.key) setEffect("");
+                  else setEffect(e.target.value);
+                }}
+                className="checkbox"
+              />
 
-      <label htmlFor="protected">Protect Image:</label>
-      <input
-        type="checkbox"
-        name="protected"
-        checked={protectedImage}
-        onChange={(e) => {
-          setProtectedImage(e.target.checked);
-        }}
-      ></input>
+              <label htmlFor={eff.key} className="form-label">
+                {eff.label}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="form-group checkbox-group">
+        <input
+          type="checkbox"
+          id="protected"
+          name="protected"
+          checked={protectedImage}
+          onChange={(e) => setProtectedImage(e.target.checked)}
+          className="checkbox"
+        />
+
+        <label htmlFor="protected" className="form-label">
+          Protect Image
+        </label>
+      </div>
 
       {protectedImage && (
-        <div>
-          <label htmlFor="password">Image Password:</label>
+        <div className="form-group">
+          <label htmlFor="password" className="form-label">
+            Image Password:
+          </label>
+
           <input
             required
             type="password"
+            id="password"
             name="password"
             placeholder="Password..."
-            onChange={(e) => {
-              setPassword(e.target.value);
-            }}
+            onChange={(e) => setPassword(e.target.value)}
+            className="form-input"
           />
         </div>
       )}
 
-      <button type="submit" onClick={handleUpload}>
-        Upload
+      <button type="submit" onClick={handleUpload} className="btn btn-primary">
+        Upload Image
       </button>
     </div>
   );
@@ -215,6 +261,7 @@ export default function Upload() {
 
         if (pastedFile) {
           e.preventDefault();
+
           setFile(pastedFile);
           setMessage("");
           setImageLink("");
@@ -247,82 +294,84 @@ export default function Upload() {
   };
 
   return (
-    <div>
-      <div
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        style={{
-          width: "300px",
-          height: "150px",
-          border: "2px dashed gray",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <p>Drag your image here</p>
-      </div>
+    <div className="container">
+      <div className="card">
+        <h1 className="title">Upload Image</h1>
 
-      <p>or</p>
-
-      {/* <input
-        type="file"
-        accept="image/*"
-        style={{ border: "2px solid black" }}
-        onChange={handleChange}
-      /> */}
-
-      <label
-        htmlFor="fileInput"
-        style={{
-          border: "2px solid black",
-          cursor: "pointer",
-        }}
-      >
-        Choose an image from your computer
-      </label>
-
-      <input
-        id="fileInput"
-        type="file"
-        accept="image/*"
-        style={{ display: "none" }}
-        onChange={handleChange}
-      />
-
-      {file && (
-        <p>
-          Selected: <strong>{file.name}</strong>
-        </p>
-      )}
-
-      <FileUploadOptions
-        file={file}
-        setFile={setFile}
-        setMessage={setMessage}
-        setImageLink={setImageLink}
-      />
-
-      <br />
-      {message && <p>{message}</p>}
-      <br />
-
-      {imageLink && (
-        <div>
-          <a href={imageLink} target="_blank" rel="noopener noreferrer">
-            {imageLink}
-          </a>
-          <br />
-          <button
-            className="rounded"
-            onClick={() => {
-              copyToClipboard(new ClipboardItem({ "text/plain": imageLink }));
-            }}
-          >
-            Copy link to clipboard
-          </button>
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          className="upload-area"
+        >
+          <p className="body-text">Drag your image here</p>
         </div>
-      )}
+
+        <div className="text-center mt-2 mb-2">
+          <span className="caption">or</span>
+        </div>
+
+        <div className="text-center">
+          <label htmlFor="fileInput" className="file-input-label">
+            Choose an image from your device
+          </label>
+
+          <input
+            id="fileInput"
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={handleChange}
+          />
+        </div>
+
+        {file && (
+          <div className="message message-info">
+            Selected: <strong>{file.name}</strong>
+          </div>
+        )}
+
+        <FileUploadOptions
+          file={file}
+          setFile={setFile}
+          setMessage={setMessage}
+          setImageLink={setImageLink}
+        />
+
+        {message && (
+          <div
+            className={`message ${message.includes("Error") || message.includes("Failed") ? "message-error" : "message-success"}`}
+          >
+            {message}
+          </div>
+        )}
+
+        {imageLink && (
+          <div className="content-card text-center">
+            <p className="body-text">Your image is ready.</p>
+            <a
+              href={imageLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link"
+            >
+              {imageLink}
+            </a>
+
+            <div className="mt-2">
+              <button
+                className="btn btn-secondary btn-small"
+                onClick={() => {
+                  copyToClipboard(
+                    new ClipboardItem({ "text/plain": imageLink }),
+                  );
+                }}
+              >
+                Copy Link
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

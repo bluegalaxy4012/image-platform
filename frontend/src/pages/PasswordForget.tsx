@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/ApiClient";
@@ -14,23 +16,13 @@ export default function PasswordForget() {
       return;
     }
 
-    // try {
-    //   const response = await apiClient.post("/forgot-password", { email });
-    //   setMessage(response.data.message);
-    //   setError("");
-    //   setTimeout(() => navigate("/login"), 4000);
-    // } catch (error: any) {
-    //   setError(error.response?.data?.detail || "Failed to send reset email.");
-    //   setMessage("");
-    // }
-
     apiClient
       .post("/forgot-password", { email })
       .then((response) => {
         if (response.data) setMessage(response.data.message);
 
         setError("");
-        setTimeout(() => navigate("/login"), 3000);
+        setTimeout(() => navigate("/login"), 5000);
       })
       .catch((error) => {
         if (error.response) setError(error.response.data.detail);
@@ -40,21 +32,38 @@ export default function PasswordForget() {
   };
 
   return (
-    <div>
-      <h1>Forgot Password</h1>
-      <div>
-        <label>Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Enter your email"
-        />
+    <div className="container">
+      <div className="card">
+        <h1 className="title">Forgot Password</h1>
+
+        <div className="form-group">
+          <label className="form-label">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            className="form-input"
+          />
+        </div>
+
+        <div className="btn-group-vertical">
+          <button onClick={handleSubmit} className="btn btn-primary btn-full">
+            Send Reset Link
+          </button>
+
+          <button
+            onClick={() => navigate("/login")}
+            className="btn btn-secondary btn-full"
+          >
+            Back to Login
+          </button>
+        </div>
+
+        {message && <div className="message message-success">{message}</div>}
+
+        {error && <div className="message message-error">{error}</div>}
       </div>
-      <button onClick={handleSubmit}>Send Reset Link</button>
-      <button onClick={() => navigate("/login")}>Back to Login</button>
-      {message && <p>{message}</p>}
-      {error && <p>{error}</p>}
     </div>
   );
 }

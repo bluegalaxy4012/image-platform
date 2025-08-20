@@ -1,3 +1,7 @@
+"use client";
+
+import type React from "react";
+
 import { useState } from "react";
 import apiClient, { useAuthRedirect } from "../api/ApiClient";
 
@@ -48,56 +52,79 @@ export default function Register() {
   };
 
   return (
-    <div>
-      <p> Register </p>
+    <div className="container">
+      <div className="card">
+        <h1 className="title">Create Account</h1>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          required
-          type="email"
-          name="email"
-          placeholder="Enter your email..."
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <input
+              required
+              type="email"
+              name="email"
+              placeholder="Enter your email..."
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="form-input"
+            />
+          </div>
 
-        <input
-          required
-          type="text"
-          name="username"
-          placeholder="Enter your username..."
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
+          <div className="form-group">
+            <input
+              required
+              type="text"
+              name="username"
+              placeholder="Enter your username..."
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="form-input"
+            />
+          </div>
 
-        <input
-          required
-          type="password"
-          name="password"
-          placeholder="Enter your password..."
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+          <div className="form-group">
+            <input
+              required
+              type="password"
+              name="password"
+              placeholder="Enter your password..."
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="form-input"
+            />
+          </div>
 
-        <input
-          required
-          type="password"
-          name="confirmPassword"
-          placeholder="Confirm your password..."
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
+          <div className="form-group">
+            <input
+              required
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm your password..."
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="form-input"
+            />
+          </div>
 
-        <button type="submit">Register</button>
+          <button type="submit" className="btn btn-primary btn-full btn-large">
+            Create Account
+          </button>
 
-        {message && <p>{message}</p>}
+          {message && (
+            <div
+              className={`message ${message.includes("failed") || message.includes("required") || message.includes("match") ? "message-error" : "message-success"}`}
+            >
+              {message}
+            </div>
+          )}
 
-        <br />
-
-        <p>
-          Already have an account? <a href="/login">Login</a>
-        </p>
-      </form>
+          <div className="text-center mt-3">
+            <span className="body-text">Already have an account? </span>
+            <a href="/login" className="link">
+              Sign In
+            </a>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

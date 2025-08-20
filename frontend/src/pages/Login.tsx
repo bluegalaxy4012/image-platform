@@ -1,3 +1,7 @@
+"use client";
+
+import type React from "react";
+
 import { useState } from "react";
 import apiClient, { useAuthRedirect } from "../api/ApiClient";
 
@@ -29,7 +33,7 @@ export default function Login() {
 
           setTimeout(() => {
             window.location.href = "/";
-          }, 1000);
+          }, 850);
         } else {
           setMessage("Login failed. Try again later.");
         }
@@ -42,35 +46,55 @@ export default function Login() {
   };
 
   return (
-    <div>
-      <p> Login </p>
+    <div className="container">
+      <div className="card">
+        <h1 className="title">Welcome Back</h1>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          name="email"
-          placeholder="Enter your email..."
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter your email..."
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="form-input"
+            />
+          </div>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Enter your password..."
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+          <div className="form-group">
+            <input
+              type="password"
+              name="password"
+              placeholder="Enter your password..."
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="form-input"
+            />
+          </div>
 
-        <button type="submit">Login</button>
-      </form>
+          <button type="submit" className="btn btn-primary btn-full btn-large">
+            Sign In
+          </button>
+        </form>
 
-      {message && <p>{message}</p>}
+        {/* based on message / error */}
+        {message && (
+          <div
+            className={`message ${message.includes("failed") || message.includes("required") ? "message-error" : "message-success"}`}
+          >
+            {message}
+          </div>
+        )}
 
-      <br />
-      <p>
-        Forgot your account? <a href="/forgot-password">Reset password</a>
-      </p>
+        <div className="text-center mt-3">
+          <span className="body-text">Forgot your password? </span>
+
+          <a href="/forgot-password" className="link">
+            Reset it here
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

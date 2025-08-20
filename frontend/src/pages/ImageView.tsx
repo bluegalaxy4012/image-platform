@@ -1,3 +1,5 @@
+"use client";
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import apiClient from "../api/ApiClient";
@@ -37,11 +39,13 @@ export default function ImageView() {
           if (error.response) {
             if (error.response.status === 401) {
               setShowPasswordPrompt(true);
+
               if (pass) setError("Incorrect password. Please try again.");
               else
                 setError("This image is protected. Please enter the password.");
             } else {
               const errorJson = JSON.parse(await error.response.data.text());
+
               setError(errorJson.detail + ". Try reloading the page.");
               setImageUrl("");
             }
@@ -55,63 +59,125 @@ export default function ImageView() {
     fetchImage();
   }, [fetchImage]);
 
-  if (!imageId) return <div>No image ID provided.</div>;
+  if (!imageId)
+    return (
+      <div className="container">
+        <div className="card text-center">
+          <div className="message message-error">No image ID provided.</div>
+
+          <button onClick={() => navigate("/")} className="btn btn-secondary">
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
 
   if (showPasswordPrompt)
     return (
-      <div>
-        <h2>Protected Image</h2>
-        <p>{error}</p>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Enter password"
-        />
-        <button onClick={() => fetchImage(password)}>Submit</button>
-        <button onClick={() => navigate("/")}>Back to Home</button>
+      <div className="container">
+        <div className="card">
+          <h2 className="title">Protected Image</h2>
+
+          {error && <div className="message message-error">{error}</div>}
+
+          <div className="form-group">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              className="form-input"
+            />
+          </div>
+
+          <div className="btn-group">
+            <button
+              onClick={() => fetchImage(password)}
+              className="btn btn-primary"
+            >
+              Submit
+            </button>
+
+            <button onClick={() => navigate("/")} className="btn btn-secondary">
+              Back to Home
+            </button>
+          </div>
+        </div>
       </div>
     );
 
   if (error)
     return (
-      <div>
-        <h2>Error</h2>
-        <p>{error}</p>
-        <button onClick={() => navigate("/")}>Back to Home</button>
+      <div className="container">
+        <div className="card text-center">
+          <h2 className="subtitle">Error</h2>
+
+          <div className="message message-error">{error}</div>
+
+          <button onClick={() => navigate("/")} className="btn btn-secondary">
+            Back to Home
+          </button>
+        </div>
       </div>
     );
 
-  if (!imageUrl) return <div>Loading image...</div>;
+  if (!imageUrl)
+    return (
+      <div className="container">
+        <div className="card text-center">
+          <div className="loading">
+            <div className="spinner"></div>
+            Loading image...
+          </div>
+        </div>
+      </div>
+    );
 
   return (
-    <div>
-      <img src={imageUrl} alt="Loaded image" />
-      <div>
-        <a href={imageUrl} download={`image-${imageId}`}>
-          <button>Download Image</button>
-        </a>
-        <button
-          onClick={async () => {
-            await copyToClipboard(
-              new ClipboardItem({ "text/plain": window.location.href }),
-            );
-          }}
-        >
-          Copy Image Link to Clipboard
-        </button>
-        <button
-          onClick={async () => {
-            if (imageBlob)
+    <div className="container">
+      <div className="card">
+        <div className="image-container">
+          <img
+            src={imageUrl}
+            alt="Loaded image"
+            className="image-view-display"
+          />
+        </div>
+
+        <div className="btn-group-vertical">
+          <a href={imageUrl} download={`image-${imageId}`}>
+            <button className="btn btn-primary btn-full">Download Image</button>
+          </a>
+          <button
+            onClick={async () => {
               await copyToClipboard(
-                new ClipboardItem({ [imageBlob.type]: imageBlob }),
+                new ClipboardItem({ "text/plain": window.location.href }),
               );
-          }}
-        >
-          Copy Image to Clipboard
-        </button>
+            }}
+            className="btn btn-secondary btn-full"
+          >
+            Copy Image Link
+          </button>
+
+          <button
+            onClick={async () => {
+              if (imageBlob)
+                await copyToClipboard(
+                  new ClipboardItem({ [imageBlob.type]: imageBlob }),
+                );
+            }}
+            className="btn btn-secondary btn-full"
+          >
+            Copy Image to Clipboard
+          </button>
+        </div>
+
+        <div className="text-center mt-3">
+          <button onClick={() => navigate("/")} className="btn btn-secondary">
+            Back to Home
+          </button>
+        </div>
       </div>
-      <button onClick={() => navigate("/")}>Back to Home</button>
     </div>
   );
 }
